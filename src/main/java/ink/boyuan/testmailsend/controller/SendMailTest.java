@@ -1,11 +1,20 @@
 package ink.boyuan.testmailsend.controller;
 
+import ink.boyuan.testmailsend.constant.MailMsg;
+import ink.boyuan.testmailsend.model.MailBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import javax.mail.internet.MimeMessage;
+import java.io.File;
 
 /**
  * @author wyy
@@ -19,17 +28,71 @@ public class SendMailTest {
 
 
     @Autowired
+    private MailMsg mailMsg;
+
+    @Autowired
     private JavaMailSender mailSender;
 
+    /**
+     * 发送简单的邮件
+     * @param mailBean
+     * @return
+     * @throws Exception
+     */
     @RequestMapping(value = "/sendmail",method = RequestMethod.GET)
-    public String sendSimpleMail() throws Exception {
+    public String sendSimpleMail(MailBean mailBean) throws Exception {
         SimpleMailMessage   message  =  new   SimpleMailMessage();
-        message.setFrom("single_violet@163.com");
-        message.setTo( "790832824@qq.com");
+        message.setFrom(mailMsg.getMailSender());
+        message.setTo( mailBean.getRecipient());
         message.setSubject(" Theme " );
         message.setText("Hello: how have you been!");
         mailSender.send( message);
       return "发送成功！";
     }
 
+    /**
+     * 发送HTML格式的邮件
+     * @param mailBean
+     */
+    public void sendHTMLMail(MailBean mailBean) {
+        MimeMessage mimeMailMessage = null;
+        try {
+            mimeMailMessage = mailSender.createMimeMessage();
+            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMailMessage, true);
+            mimeMessageHelper.setFrom(mailMsg.getMailSender());
+            mimeMessageHelper.setTo(mailBean.getRecipient());
+            mimeMessageHelper.setSubject(mailBean.getSubject());
+            StringBuilder sb = new StringBuilder();
+            sb.append("<h1>SpirngBoot测试邮件HTML</h1>")
+                    .append("\"<p style='color:#F00'>你是真的太棒了！</p>")
+                    .append("<p style='text-align:right'>右对齐</p>");
+            mimeMessageHelper.setText(sb.toString(), true);
+            mailSender.send(mimeMailMessage);
+        } catch (Exception e) {
+           e.printStackTrace();
+        }
+    }
+
+    /**
+     * 发送静态文件的邮件
+     * @param mailBean
+     */
+    public void sendAttachmentMail(MailBean mailBean) {
+        MimeMessage mimeMailMessage = null;
+        try {
+            mimeMailMessage = mailSender.createMimeMessage();
+            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMailMessage, true);
+            mimeMessageHelper.setFrom(mailMsg.getMailSender());
+            mimeMessageHelper.setTo(mailBean.getRecipient());
+            mimeMessageHelper.setSubject(mailBean.getSubject());
+            mimeMessageHelper.setText(mailBean.getContent());
+            //文件路径
+            FileSystemResource file = new FileSystemResource(new File("src/main/resources/static/image/mail.png"));
+            mimeMessageHelper.addAttachment("mail.png", file);
+
+            mailSender.send(mimeMailMessage);
+        } catch (Exception e) {
+           e.printStackTrace();
+        }
+    }
 }
